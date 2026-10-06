@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Güvenlik açığı
+    url: https://github.com/acar32furkan-glitch/marketplace-sentinel/security/policy
+    about: Güvenlikle ilgili konuları herkese açık issue olarak açmayın; özel bildirim kullanın.
+  - name: Kural sözlüğü ve eşikler
+    url: https://github.com/acar32furkan-glitch/marketplace-sentinel/blob/main/docs/rules.md
+    about: Hangi kodun ne anlama geldiğini ve eşiklerin neden seçildiğini burada bulabilirsiniz.
+  - name: Yeni pazaryeri profili
+    url: https://github.com/acar32furkan-glitch/marketplace-sentinel/blob/main/docs/adr/0001-profile-driven-adapters.md
+    about: Yeni bir kanal kod değil profil dosyasıyla eklenir; alan eşlemesini burada bulun.
