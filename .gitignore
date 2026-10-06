@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Araçlar / editörler
+.idea/
+.vscode/*
+!.vscode/settings.json
+*.swp
+.DS_Store
+
+# Gizli bilgiler — ASLA commit edilmez
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Nöbetçi çıktıları: durum ve raporlar yereldir, commit edilmez (örnek fixture hariç)
+state.json
+*.state.json
+!examples/data/state.json
+reports/
+*.report.json
