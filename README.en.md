@@ -166,4 +166,4 @@ wrong Python turns red instead of passing silently.
 
 ## License
 
-[MIT](LICENSE) © 2026 acar32furkan-glitch
+[MIT](LICENSE) © 2026 Furkan Acar (acar32furkan-glitch)

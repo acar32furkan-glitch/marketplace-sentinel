@@ -9,7 +9,7 @@ description = "Çok pazaryerli kanal çakışması nöbetçisi: aynı ürün kan
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
-authors = [{ name = "acar32furkan-glitch", email = "284462468+acar32furkan-glitch@users.noreply.github.com" }]
+authors = [{ name = "Furkan Acar", email = "284462468+acar32furkan-glitch@users.noreply.github.com" }]
 keywords = ["marketplace", "e-commerce", "monitoring", "stock", "pricing", "cli", "ci", "turkiye"]
 classifiers = [
   "Development Status :: 3 - Alpha",
