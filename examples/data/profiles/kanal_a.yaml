@@ -1,0 +1,24 @@
+# Kanal A — BASIC kimlik doğrulamalı örnek pazaryeri profili.
+# Alan adları Türkçedir; nöbetçi çekirdeği İngilizce alan sözlüğüyle çalışır, çeviriyi bu dosya yapar.
+name: kanal_a
+base_url: "https://ornek-a.example/api"
+products_path: "/listings/merchantid/{merchant_id}"
+auth: basic
+username_env: KANAL_A_USER
+password_env: KANAL_A_PASS
+user_agent: "marketplace-sentinel/0.1.0 (kanal_a)"
+field_map:
+  sku: urun_kodu
+  title: baslik
+  price: satis_fiyati
+  stock: stok_adedi
+  list_price: liste_fiyati
+  active: aktif
+  updated_at: guncelleme_zamani
+  barcode: barkod
+params:
+  merchant_id: "1001"
+page_param: page
+size_param: limit
+page_size: 100
+items_path: data.listings

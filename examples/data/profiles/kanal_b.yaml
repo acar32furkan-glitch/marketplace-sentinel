@@ -1,0 +1,19 @@
+# Kanal B — BEARER kimlik doğrulamalı örnek pazaryeri profili.
+# Kanal A'dan farklı alan adları, farklı items_path ve farklı sayfalama kullanır.
+name: kanal_b
+base_url: "https://ornek-b.example"
+products_path: "/v2/catalog/products"
+auth: bearer
+token_env: KANAL_B_TOKEN
+user_agent: "marketplace-sentinel/0.1.0 (kanal_b)"
+field_map:
+  sku: sku
+  title: name
+  price: price
+  stock: quantity
+  updated_at: modifiedAt
+params: {}
+page_param: page
+size_param: size
+page_size: 100
+items_path: payload.items

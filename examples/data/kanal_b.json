@@ -1,0 +1,54 @@
+{
+  "marketplace": "kanal_b",
+  "listings": [
+    {
+      "sku": "sku-101",
+      "name": "Pamuklu Basic Tişört",
+      "price": 249.9,
+      "quantity": 38,
+      "modifiedAt": "2026-10-06T08:45:00+03:00"
+    },
+    {
+      "sku": "sku-102",
+      "name": "Slim Fit Gömlek",
+      "price": 129.9,
+      "quantity": 24,
+      "modifiedAt": "2026-10-06T07:20:00+03:00"
+    },
+    {
+      "sku": "sku-103",
+      "name": "Yün Karışım Kazak",
+      "price": 118.0,
+      "quantity": 32,
+      "modifiedAt": "2026-10-06T08:05:00+03:00"
+    },
+    {
+      "sku": "sku-105",
+      "name": "Deri Cüzdan",
+      "price": 310.0,
+      "quantity": 14,
+      "modifiedAt": "2026-10-06T07:00:00+03:00"
+    },
+    {
+      "sku": "sku-106",
+      "name": "Spor Ayakkabı",
+      "price": 88.8,
+      "quantity": 20,
+      "modifiedAt": "2026-10-06T07:30:00+03:00"
+    },
+    {
+      "sku": "sku-107",
+      "name": "Tote Çanta",
+      "price": 145.0,
+      "quantity": 58,
+      "modifiedAt": "2026-10-06T06:10:00+03:00"
+    },
+    {
+      "sku": "sku-108",
+      "name": "Hasır Şapka",
+      "price": 199.0,
+      "quantity": 9,
+      "modifiedAt": "2026-10-06T05:30:00+03:00"
+    }
+  ]
+}
