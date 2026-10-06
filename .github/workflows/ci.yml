@@ -59,9 +59,18 @@ jobs:
       - name: Örnek veri profillerle tutarlı mı
         run: uv run python scripts/verify_examples.py
 
+      # Nöbetçi, politikaya göre bilerek 1 koduyla çıkar; bu yüzden her adımda çıkış kodunu
+      # kendimiz doğrularız (aksi hâlde `bash -e` sağlıklı bir sonucu hata sayardı).
       - name: Demo taraması geçerli JSON üretmeli
         run: |
+          set +e
           uv run sentinel scan --fixtures examples/data --json --no-state-write > /tmp/scan.json
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "HATA: beklenen çıkış kodu 1, gelen $code" >&2
+            exit 1
+          fi
           uv run python - <<'PY'
           import json
           from pathlib import Path
@@ -72,21 +81,28 @@ jobs:
           print(f"geçerli JSON: {len(data['alerts'])} alarm")
           PY
 
-      - name: İnsan tarafı konsol çıktısı (en çok 5 alarm)
-        # --no-state-write: demo, depodaki örnek durum dosyasını değiştirmemeli (CI idempotent kalsın).
-        run: uv run sentinel scan --fixtures examples/data --max-alerts 5 --no-state-write
-
-      - name: İstenen politikada çıkış kodu doğru mu (1 beklenir)
+      - name: İnsan tarafı konsol çıktısı ve karar satırı (en çok 5 alarm)
         run: |
           set +e
-          uv run sentinel scan --fixtures examples/data --fail-on new-critical --no-state-write > /dev/null
-          code=$?
+          uv run sentinel scan --fixtures examples/data --max-alerts 5 --no-state-write | tee /tmp/scan.txt
+          code=${PIPESTATUS[0]}
           set -e
           if [ "$code" -ne 1 ]; then
             echo "HATA: beklenen çıkış kodu 1, gelen $code" >&2
             exit 1
           fi
-          echo "doğru davranış: yeni kritik alarm var → exit 1"
+          grep -q "KANAL ÇAKIŞMASI NÖBETÇİSİ" /tmp/scan.txt
+          grep -q "KARAR: KALDI" /tmp/scan.txt
+          grep -q "STOK_CAKISMASI" /tmp/scan.txt
+
+      - name: Örnek durum dosyası değişmemeli (CI idempotent)
+        run: |
+          if ! git diff --quiet -- examples/data/state.json; then
+            echo "HATA: demo, örnek durum dosyasını değiştirdi" >&2
+            git diff -- examples/data/state.json
+            exit 1
+          fi
+          echo "örnek durum dosyası korunmuş ✔"
 
       - name: İş özeti (Actions sekmesine Markdown rapor)
         if: always()
