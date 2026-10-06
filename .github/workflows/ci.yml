@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: kalite (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    # Matris yorumlayıcısını uv'ye sabitliyoruz: aksi hâlde `uv sync`/`uv run` .python-version'a
+    # dönüp venv'i yeniden kurar ve dev araçları düşer (ruff bulunamaz) ya da "3.13" işi
+    # sessizce 3.12 koşar.
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Bağımlılıkları kur
+        run: uv sync --all-extras --dev
+      - name: Yorumlayıcıyı ve araçları doğrula
+        run: |
+          uv run python -c "import sys; v=f'{sys.version_info[0]}.{sys.version_info[1]}'; assert v == '${{ matrix.python-version }}', f'beklenen ${{ matrix.python-version }}, gelen {v}'; print('python', v)"
+          uv run ruff --version
+      - name: ruff (lint)
+        run: uv run ruff check .
+      - name: ruff (format)
+        run: uv run ruff format --check .
+      - name: mypy (strict)
+        run: uv run mypy
+      - name: pytest + kapsam
+        run: uv run pytest --cov=sentinel --cov-report=term-missing --cov-fail-under=85
+
+  demo:
+    name: nöbetçi demo çalışıyor mu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+
+      - name: Örnek veri profillerle tutarlı mı
+        run: uv run python scripts/verify_examples.py
+
+      - name: Demo taraması geçerli JSON üretmeli
+        run: |
+          uv run sentinel scan --fixtures examples/data --json --no-state-write > /tmp/scan.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("/tmp/scan.json").read_text(encoding="utf-8"))
+          assert isinstance(data, dict), "JSON kök nesnesi bir sözlük olmalı"
+          assert "alerts" in data, "JSON çıktısında 'alerts' alanı olmalı"
+          print(f"geçerli JSON: {len(data['alerts'])} alarm")
+          PY
+
+      - name: İnsan tarafı konsol çıktısı (en çok 5 alarm)
+        # --no-state-write: demo, depodaki örnek durum dosyasını değiştirmemeli (CI idempotent kalsın).
+        run: uv run sentinel scan --fixtures examples/data --max-alerts 5 --no-state-write
+
+      - name: İstenen politikada çıkış kodu doğru mu (1 beklenir)
+        run: |
+          set +e
+          uv run sentinel scan --fixtures examples/data --fail-on new-critical --no-state-write > /dev/null
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "HATA: beklenen çıkış kodu 1, gelen $code" >&2
+            exit 1
+          fi
+          echo "doğru davranış: yeni kritik alarm var → exit 1"
+
+      - name: İş özeti (Actions sekmesine Markdown rapor)
+        if: always()
+        run: |
+          set +e
+          uv run sentinel scan --fixtures examples/data \
+            --fail-on new-critical --github-summary --no-state-write > /dev/null
+          exit 0
