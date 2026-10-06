@@ -1,0 +1,56 @@
+name: Hata bildirimi / yanlış alarm
+description: Nöbetçi yanlış alarm verdi ya da gerçek bir tutarsızlığı kaçırdı.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Teşekkürler! Bu proje veriye bakan kurallarla çalışır; örnek **fixture** olmadan
+        düzeltilemez. Lütfen sku ve kanal verilerini kısaltarak paylaşın.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Sorun türü
+      options:
+        - Yanlış alarm (olmayan tutarsızlık bildirildi)
+        - Kaçırılan tutarsızlık (var olan sorun bildirilmedi)
+        - Durum/dedupe hatası (YENİ/DEVAM EDEN/ÇÖZÜLDÜ yanlış)
+        - Çökme / beklenmeyen hata
+        - Diğer
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: İlgili kural veya kod
+      placeholder: "STOK_CAKISMASI · TRN-1001"
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Fixture ve profil (sku + kanal verileri)
+      placeholder: |
+        profile: trendyol.yaml
+        sku: TRN-1001
+        channels: trendyol stock=0, hepsiburada stock=12
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Beklenen davranış ve gerekçe
+      placeholder: Bu sku için KRİTİK STOK_CAKISMASI bekleniyordu çünkü bir kanal 0, diğeri ≥10.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Sürüm
+      placeholder: "sentinel --version çıktısı"
+  - type: textarea
+    id: command
+    attributes:
+      label: Varsa komut, durum dosyası ve çıktı
+      render: shell
+      placeholder: |
+        uv run sentinel scan --fixtures examples/data --now 2026-10-06T09:00:00Z

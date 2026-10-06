@@ -1,0 +1,39 @@
+name: Kural / pazaryeri profili önerisi
+description: Yeni bir kural, pazaryeri profili veya iş akışı önerin.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Hangi tutarsızlık sınıfı yakalanmıyor?
+      placeholder: |
+        Örnek: "Aynı sku iki kanalda farklı para biriminde listeleniyor (TL vs EUR) ve
+        fiyat sapması yanlış hesaplanıyor. Bu durumu hiçbir kural ele almıyor."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Önerilen kural veya profil ve örnek girdi
+      placeholder: |
+        Kural adı: PARA_BIRIMI_FARKI
+        Girdi: aynı sku, farklı currency alanları
+        Beklenen: dönüşüm yoksa UYARI
+    validations:
+      required: true
+  - type: dropdown
+    id: deterministic
+    attributes:
+      label: Bu ekleme deterministik olabilir mi? (ağ/LLM çağrısı gerektirir mi?)
+      options:
+        - "Evet, saf fonksiyon / veri (profil) ile yazılabilir"
+        - "Hayır, ağ veya LLM gerektirir"
+        - "Emin değilim"
+    validations:
+      required: true
+  - type: textarea
+    id: falsepositives
+    attributes:
+      label: Yanlış alarm riski ve nasıl önlenir?
+      placeholder: Kuralın emin olmadığında susması için hangi koşul gerekli?
