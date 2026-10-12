@@ -115,7 +115,9 @@ Durum dosyası önceki koşunun alarmlarını taşır, böylece:
 - **DEVAM EDEN** — imza zaten açık, hâlâ geçerli (özetlenir, tekrar bağırılmaz).
 - **ÇÖZÜLDÜ** — önceki koşuda açıktı, bu koşuda yok (kapanış notu).
 
-Durum dosyası insan tarafından okunabilir JSON'dur; `--no-state-write` ile yazma kapatılır.
+Durum dosyası insan tarafından okunabilir JSON'dur; `--no-state-write` ile yazma kapatılır. İlk koşu,
+dedupe, kısmi kanal hatası ve bozuk durum dosyası senaryoları **gerçek komut çıktılarıyla**:
+[docs/kosu-senaryolari.md](docs/kosu-senaryolari.md).
 
 ## Mimari
 

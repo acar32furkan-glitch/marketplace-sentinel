@@ -59,17 +59,22 @@ böylece durum dosyası küçük ve okunur kalır.
 - **Determinizm:** sınıflama yalnızca girdi ve önceki duruma bağlıdır; saat dışarıdan verilir
   (`--now`), rastgelelik ve ağ yoktur. Aynı `(alarm seti, durum)` her zaman aynı YENİ/DEVAM
   EDEN/ÇÖZÜLDÜ ayrımını üretir; bu `tests/` içinde sabitlenmiştir.
-- **`--no-state-write`:** durum yazmadan çalıştırma (CI'da bir seferlik doğrulama için). Bu durumda
-  tüm alarmlar YENİ sayılır; bu bilinçli bir uyarıdır, sessiz bir sürpriz değil.
+- **`--no-state-write`:** durum dosyasını okur, yazmaz (CI'da bir seferlik doğrulama için). Durum
+  dosyası **yoksa/okunamıyorsa** tüm alarmlar YENİ sayılır; okunabilir bir dosya varsa içindeki
+  imzalar uygulanmaya devam eder, yani aynı YENİ/DEVAM EDEN/ÇÖZÜLDÜ bölünmesi her koşuda tekrarlanır
+  ve dosya gerçeklikten kopar. Bu bilinçli bir uyarıdır, sessiz bir sürpriz değil; ayrıntı ve gerçek
+  çıktılar: [koşu senaryoları](../kosu-senaryolari.md).
 
 ## Sonuçlar
 
 - **Kazanç:** bildirim **yeni** ve **kritik** olana odaklanır; aynı sorun bir kez bağırılır, çözülünce
   kapanır. Operatör alarmı ciddiye alır. `--fail-on new-critical` politikası da bu sayede anlamlıdır:
   bilinen borç CI'yı kırmaz, yeni kritik alarm kırar.
-- **Bedel:** durum dosyası yönetilmesi gereken bir yan varlıktır. Bozuk/eksik dosya girdi hatası
+- **Bedel:** durum dosyası yönetilmesi gereken bir yan varlıktır. **Bozuk** dosya girdi hatası
   (çıkış kodu `2`) verir — nöbetçi dosyayı tahminle onarmaz ve sessizce sıfırlamaz, çünkü bu tüm
-  alarmları sahte biçimde "yeni" ya da sahte biçimde "sessiz" yapardı.
+  alarmları sahte biçimde "yeni" ya da sahte biçimde "sessiz" yapardı. **Eksik** dosya hata değildir:
+  dosya yokluğu "ilk koşu" sayılır ve tüm alarmlar YENİ olur (bkz.
+  [koşu senaryoları](../kosu-senaryolari.md)).
 - **Kural:** imza biçimi genişletilebilir (`kod:sku` + isteğe bağlı kanal ayrımı) ama değiştirilmesi
   durum dosyası sürümünü (`version`) yükseltmeyi gerektirir; eski sürüm durum dosyası reddedilir ya da
   açık bir geçişle okunur.
