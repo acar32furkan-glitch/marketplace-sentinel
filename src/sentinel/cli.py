@@ -141,6 +141,11 @@ def _write_github_summary(markdown: str) -> None:
         handle.write(markdown + "\n")
 
 
+def _warn_state(message: str) -> None:
+    """Durum dosyası uyarısını stderr'e yaz (çıkış kodunu değiştirmez)."""
+    print(f"uyarı: {message}", file=sys.stderr)
+
+
 def cmd_scan(args: argparse.Namespace) -> int:
     """Kanalları tara, raporla ve (istenirse) durum dosyasını güncelle."""
     fixtures: Path = args.fixtures
@@ -148,7 +153,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
     now = _resolve_now(args.now)
     policy = FailPolicy(args.fail_on)
     channels = _load_channels(fixtures)
-    result = run_scan(channels, now=now, previous_state=load_state(state_path))
+    result = run_scan(channels, now=now, previous_state=load_state(state_path, warn=_warn_state))
     passed, reasons = decide(result, policy)
 
     if args.as_json or args.report:
@@ -179,7 +184,7 @@ def cmd_state_show(args: argparse.Namespace) -> int:
     if not path.is_file():
         msg = f"durum dosyası bulunamadı: {path}"
         raise FileNotFoundError(msg)
-    state = load_state(path)
+    state = load_state(path, warn=_warn_state)
     if args.as_json:
         payload = {"state": str(path), "count": len(state), "signatures": state}
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -204,7 +209,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
     iterations = max(1, args.iterations)
     for turn in range(1, iterations + 1):
         now = DEMO_NOW + timedelta(seconds=args.interval * (turn - 1))
-        result = run_scan(channels, now=now, previous_state=load_state(state_path))
+        result = run_scan(channels, now=now, previous_state=load_state(state_path, warn=_warn_state))
         print(f"--- tur {turn}/{iterations} — {now:%d.%m.%Y %H:%M} ---")
         print(render_scan_text(result, max_alerts=args.max_alerts))
         save_state(state_path, (*result.new, *result.ongoing), now=now)

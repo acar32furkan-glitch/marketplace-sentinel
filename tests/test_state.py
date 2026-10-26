@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from sentinel.models import AlertStatus, Severity
-from sentinel.state import classify, load_state, save_state
+from sentinel.state import StateFileError, classify, load_state, save_state
 from tests.factories import ANCHOR, make_alert
 
 
@@ -28,11 +28,54 @@ def test_load_state_ic_ice_ve_duz_bicim(tmp_path: Path) -> None:
     assert load_state(flat) == {"B:sku-2": "2026-10-02T09:00:00+03:00"}
 
 
-def test_load_state_bozuk_json(tmp_path: Path) -> None:
+def test_load_state_bozuk_json_turkce_mesaj(tmp_path: Path) -> None:
     path = tmp_path / "bozuk.json"
     path.write_text("{", encoding="utf-8")
-    with pytest.raises(json.JSONDecodeError):
+    with pytest.raises(StateFileError) as excinfo:
         load_state(path)
+    message = str(excinfo.value)
+    assert "durum dosyası geçerli JSON değil" in message
+    assert str(path) in message
+    assert "satır 1, sütun 2" in message
+    assert isinstance(excinfo.value, ValueError)
+
+
+def test_load_state_alerts_alani_yoksa(tmp_path: Path) -> None:
+    path = tmp_path / "meta.json"
+    path.write_text(json.dumps({"version": 1, "generated_at": "2026-10-01T09:00:00+03:00"}), encoding="utf-8")
+    with pytest.raises(StateFileError, match="'alerts' alanı yok"):
+        load_state(path)
+
+
+def test_load_state_kayit_first_seen_yoksa(tmp_path: Path) -> None:
+    path = tmp_path / "eksik.json"
+    path.write_text(json.dumps({"alerts": {"A:sku-1": {"last_seen": "2026-10-01T09:00:00+03:00"}}}), encoding="utf-8")
+    with pytest.raises(StateFileError, match="'A:sku-1' kaydının 'first_seen' alanı yok"):
+        load_state(path)
+
+
+def test_load_state_first_seen_metin_degilse(tmp_path: Path) -> None:
+    path = tmp_path / "tip.json"
+    path.write_text(json.dumps({"alerts": {"A:sku-1": {"first_seen": 20261001}}}), encoding="utf-8")
+    with pytest.raises(StateFileError, match="boş olmayan metin olmalı"):
+        load_state(path)
+
+
+def test_load_state_iso_olmayan_ilk_gorulme_uyari_verir(tmp_path: Path) -> None:
+    path = tmp_path / "tarih.json"
+    path.write_text(json.dumps({"alerts": {"A:sku-1": {"first_seen": "bozuk-tarih"}}}), encoding="utf-8")
+    warnings: list[str] = []
+    state = load_state(path, warn=warnings.append)
+    assert state == {"A:sku-1": "bozuk-tarih"}
+    assert len(warnings) == 1
+    assert "ISO zaman damgası değil" in warnings[0]
+    assert "A:sku-1" in warnings[0]
+
+
+def test_load_state_duz_bicimde_meta_anahtarlari_kayit_sayilmaz(tmp_path: Path) -> None:
+    path = tmp_path / "duz.json"
+    path.write_text(json.dumps({"version": 1, "A:sku-1": "2026-10-01T09:00:00+03:00"}), encoding="utf-8")
+    assert load_state(path) == {"A:sku-1": "2026-10-01T09:00:00+03:00"}
 
 
 def test_load_state_nesne_degilse(tmp_path: Path) -> None:

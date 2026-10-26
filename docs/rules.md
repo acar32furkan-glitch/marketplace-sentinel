@@ -88,6 +88,49 @@ Her alarm `kod:sku` imzasıyla kimliklenir ve önceki durumla karşılaştırıl
 - **ÇÖZÜLDÜ** alarm bilgisayar tarafında kapanır; istenirse özet sonunda "çözüldü" satırı olarak
   görünür. Aynı sorun sonra tekrar çıkarsa yeniden **YENİ** sayılır.
 
+## Durum dosyası doğrulaması
+
+Durum dosyası nöbetçinin hafızasıdır: sessizce yanlış okunursa iki tür yanlış karar doğar — her alarm
+"YENİ" sayılır (fırtına) ya da kayıtlar yutulur ve uyarı hiç görünmez. Bu yüzden dosya şekli
+bozuksa **tahmin yürütülmez**; iki şiddet ayrılır:
+
+| Durum dosyası içeriği | Davranış | Çıkış |
+|-----------------------|----------|-------|
+| Dosya yok | İlk koşu sayılır; tüm alarmlar YENİ | 0 / 1 |
+| `{` (geçerli JSON değil) | `girdi hatası: durum dosyası geçerli JSON değil: <yol> (satır 1, sütun 2: …)` | 2 |
+| `["LISTE_YOK:sku-104"]` (kök nesne değil) | `girdi hatası: durum dosyası bir nesne olmalı: <yol>` | 2 |
+| `{"alerts": []}` (`alerts` nesne değil) | `girdi hatası: durum dosyasında 'alerts' nesnesi yok: <yol>` | 2 |
+| `{"version": 1, "generated_at": …}` (`alerts` alanı yok) | `girdi hatası: durum dosyasında 'alerts' alanı yok: <yol>` | 2 |
+| Kayıtta `first_seen` yok (`{"last_seen": …}`) | `girdi hatası: durum dosyasında '<imza>' kaydının 'first_seen' alanı yok: <yol>` | 2 |
+| `first_seen` metin değil (`20261001`) | `girdi hatası: … 'first_seen' değeri boş olmayan metin olmalı: <yol>` | 2 |
+| `first_seen` ISO değil (`"bozuk-tarih"`) | `uyarı: … 'first_seen' değeri ISO zaman damgası değil ('bozuk-tarih'); ilk görülme bu turun anı sayılacak: <yol>` — alarm **DEVAM EDEN** kalır | 0 / 1 |
+
+Neden iki ayrı şiddet:
+
+- **Yapı bozukluğu → dur (çıkış 2).** Dosya bizim yazdığımız biçimde değilse içindekilerin anlamı
+  bilinmiyordur; koşmaya devam etmek "her alarm yeni" (yanlış fırtına) ya da "her alarm sustu"
+  (kaçırılan uyarı) üretir. Bu durumda nöbetçi hiç alarm yazmaz ve yol/satır/sütun verir.
+- **Tek değer bozukluğu → uyar, koş (çıkış 0/1).** `first_seen` çözülemezse kaydın **varlığı** hâlâ
+  doğrudur; alarmı "YENİ" sayıp yeniden bağırmak da kaydı silmek de yanlış olur. Kayıt korunur,
+  yalnızca "ne zamandır açık?" bilgisi bu tura sabitlenir; kullanıcı stderr'de tek satır uyarı görür.
+
+Gerçek çıktılar (depo kopyasında koşulmuş):
+
+```text
+girdi hatası: durum dosyası geçerli JSON değil: $KOSU/s1/state.json (satır 1, sütun 2: Expecting property name enclosed in double quotes)
+girdi hatası: durum dosyasında 'alerts' alanı yok: $KOSU/s2/state.json
+girdi hatası: durum dosyasında 'LISTE_YOK:sku-104' kaydının 'first_seen' alanı yok: $KOSU/s3/state.json
+uyarı: durum dosyasında 'LISTE_YOK:sku-104' kaydının 'first_seen' değeri ISO zaman damgası değil ('bozuk-tarih'); ilk görülme bu turun anı sayılacak: $KOSU/s4/state.json
+```
+
+- JSON çözücünün ham İngilizce ayrıntısı parantez içinde **ek** bilgi olarak durur; kullanıcıya dönük
+  cümle Türkçedir ve dosya yolunu her zaman taşır (hangi dosyanın bozuk olduğu en sık sorulan soru).
+- Düz biçim (`{"<imza>": "<ISO>"}`) destekli kullanım olarak kalır; `version` ve `generated_at`
+  anahtarları kayıt sayılmaz.
+- `state show` aynı doğrulamayı kullanır: bozuk dosyada çıkış `2`, ISO olmayan tarihte uyarı + kaydı
+  gösterir. `state show` için **dosya yokluğu** ayrı bir girdi hatasıdır (çıkış `2`), yani "kayıt yok"
+  ile "dosya yok" karıştırılmaz.
+
 ## Skor ve karar
 
 Bu proje tek bir "kalite skoru" üretmez; kararı **politika** verir:

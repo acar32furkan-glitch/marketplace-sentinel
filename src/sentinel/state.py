@@ -8,7 +8,7 @@ imzalar bir kez "çözüldü" olarak duyurulur. Dosya insan tarafından okunabil
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,30 +18,97 @@ from sentinel.rules import alert_sort_key
 
 STATE_VERSION = 1
 ALERTS_KEY = "alerts"
+STATE_METADATA_KEYS = frozenset({"version", "generated_at"})
 
 
-def load_state(path: Path) -> dict[str, str]:
+class StateFileError(ValueError):
+    """Durum dosyası bir durum dosyası olarak okunamadı (bozuk JSON, eksik alan, yanlış tür).
+
+    ``ValueError`` alt sınıfıdır: CLI bunu girdi hatasına (çıkış kodu 2) eşler.
+    """
+
+
+def load_state(path: Path, *, warn: Callable[[str], None] | None = None) -> dict[str, str]:
     """İmza → ilk görülme (ISO) eşlemesini yükle; dosya yoksa boş sözlük döndür.
 
+    Dosya yapısal olarak bozuksa (JSON değil, kök nesne değil, ``alerts`` alanı yok, kayıt şekli
+    tanınmıyor) tahmin yürütülmez: ``StateFileError`` yükseltilir. Tek tek değer bozukluğu (ISO
+    olmayan ``first_seen``) ise alarmı yutmayı gerektirmez — kayıt korunur, ``warn`` verilmişse
+    çağıran bilgilendirilir ve zamanlama ``classify`` içinde ``now``a düşer.
+
+    Args:
+        path: Durum dosyası yolu; yoksa boş sözlük döner (ilk koşu).
+        warn: İnsan okunur uyarı metni alıcısı (CLI bunu stderr'e yazar). ``None`` ise sessiz.
+
     Raises:
-        ValueError: Dosya JSON değilse veya beklenen ``alerts`` nesnesi yoksa.
+        StateFileError: Dosya JSON değilse, kök nesne değilse, ``alerts`` alanı yoksa veya bir kayıt
+            beklenen şekilde değilse.
     """
     if not path.is_file():
         return {}
-    raw: Any = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        raw: Any = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        msg = f"durum dosyası geçerli JSON değil: {path} (satır {exc.lineno}, sütun {exc.colno}: {exc.msg})"
+        raise StateFileError(msg) from exc
     if not isinstance(raw, dict):
         msg = f"durum dosyası bir nesne olmalı: {path}"
-        raise ValueError(msg)
-    records = raw.get(ALERTS_KEY, raw)
-    if not isinstance(records, dict):
-        msg = f"durum dosyasında '{ALERTS_KEY}' nesnesi yok: {path}"
-        raise ValueError(msg)
+        raise StateFileError(msg)
+    records = _records_of(raw, path=path)
     state: dict[str, str] = {}
     for signature, value in records.items():
-        first_seen = value.get("first_seen") if isinstance(value, dict) else value
-        if isinstance(first_seen, str) and first_seen:
-            state[str(signature)] = first_seen
+        first_seen = _first_seen_of(signature, value, path=path, warn=warn)
+        state[str(signature)] = first_seen
     return state
+
+
+def _records_of(raw: dict[str, Any], *, path: Path) -> dict[str, Any]:
+    """Kök nesneden imza kayıtlarını çıkar (iç içe ``alerts`` ya da düz eşleme biçimi)."""
+    if ALERTS_KEY in raw:
+        records = raw[ALERTS_KEY]
+        if not isinstance(records, dict):
+            msg = f"durum dosyasında '{ALERTS_KEY}' nesnesi yok: {path}"
+            raise StateFileError(msg)
+        return records
+    flat = {key: value for key, value in raw.items() if key not in STATE_METADATA_KEYS}
+    if not flat:
+        msg = f"durum dosyasında '{ALERTS_KEY}' alanı yok: {path}"
+        raise StateFileError(msg)
+    return flat
+
+
+def _first_seen_of(
+    signature: str,
+    value: Any,
+    *,
+    path: Path,
+    warn: Callable[[str], None] | None,
+) -> str:
+    """Tek bir kaydın ``first_seen`` değerini doğrula; metin değilse ya da yoksa hata ver."""
+    if isinstance(value, dict):
+        if "first_seen" not in value:
+            msg = f"durum dosyasında '{signature}' kaydının 'first_seen' alanı yok: {path}"
+            raise StateFileError(msg)
+        candidate = value["first_seen"]
+    else:
+        candidate = value
+    if not isinstance(candidate, str) or not candidate:
+        msg = f"durum dosyasında '{signature}' kaydının 'first_seen' değeri boş olmayan metin olmalı: {path}"
+        raise StateFileError(msg)
+    if warn is not None and not _is_iso(candidate):
+        warn(
+            f"durum dosyasında '{signature}' kaydının 'first_seen' değeri ISO zaman damgası değil "
+            f"({candidate!r}); ilk görülme bu turun anı sayılacak: {path}"
+        )
+    return candidate
+
+
+def _is_iso(value: str) -> bool:
+    try:
+        datetime.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
 
 
 def save_state(path: Path, alerts: Iterable[Alert], *, now: datetime) -> None:
@@ -120,4 +187,4 @@ def _resolved_alert(signature: str, first_seen: str, *, now: datetime) -> Alert:
     )
 
 
-__all__ = ["classify", "load_state", "save_state"]
+__all__ = ["StateFileError", "classify", "load_state", "save_state"]

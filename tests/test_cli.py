@@ -168,6 +168,42 @@ def test_state_alt_komut_yoksa(capsys: pytest.CaptureFixture[str]) -> None:
     assert "'show'" in capsys.readouterr().err
 
 
+def test_scan_bozuk_json_durum_dosyasi_girdi_hatasi(sandbox_examples: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (sandbox_examples / "state.json").write_text("{", encoding="utf-8")
+    code = main(["scan", "--fixtures", str(sandbox_examples)])
+    captured = capsys.readouterr()
+    assert code == INPUT_ERROR
+    assert "girdi hatası: durum dosyası geçerli JSON değil" in captured.err
+    assert "satır 1, sütun 2" in captured.err
+    assert captured.out == ""  # hiçbir alarm üretilmedi
+
+
+def test_scan_alerts_alani_olmayan_durum_dosyasi_girdi_hatasi(
+    sandbox_examples: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (sandbox_examples / "state.json").write_text(
+        json.dumps({"version": 1, "generated_at": "2026-10-01T09:00:00+03:00"}), encoding="utf-8"
+    )
+    code = main(["scan", "--fixtures", str(sandbox_examples)])
+    assert code == INPUT_ERROR
+    assert "'alerts' alanı yok" in capsys.readouterr().err
+
+
+def test_state_show_iso_olmayan_ilk_gorulme_uyari_verir(
+    sandbox_examples: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = sandbox_examples / "state.json"
+    path.write_text(
+        json.dumps({"alerts": {"LISTE_YOK:sku-104": {"first_seen": "bozuk-tarih"}}}),
+        encoding="utf-8",
+    )
+    code = main(["state", "show", "--state", str(path)])
+    captured = capsys.readouterr()
+    assert code == SUCCESS
+    assert "uyarı: durum dosyasında 'LISTE_YOK:sku-104' kaydının 'first_seen'" in captured.err
+    assert "kayıtlı imza: 1" in captured.out
+
+
 def test_watch_iki_tur_ve_devam_edenler(sandbox_examples: Path, capsys: pytest.CaptureFixture[str]) -> None:
     code = main(["watch", "--fixtures", str(sandbox_examples), "--interval", "0", "--iterations", "2"])
     out = capsys.readouterr().out

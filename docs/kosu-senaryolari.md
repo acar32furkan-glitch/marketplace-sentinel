@@ -199,18 +199,21 @@ not: kanal_b: örnek dosya bulunamadı: $KOSU/s3/kanal_b.json
 
 Nöbetçi durum dosyasını **onarmaya çalışmaz**. Şekli bozuksa anlaşılır bir girdi hatası verir ve
 hiçbir alarm üretmez (aksi hâlde tüm alarmlar sahte biçimde "yeni" ya da sahte biçimde "sessiz"
-olurdu). Dört bozukluk örneği:
+olurdu). Beş bozukluk örneği:
 
 | Durum dosyası içeriği | Çıktı (stderr) | Çıkış |
 |---|---|---|
-| `{"alerts": {"LISTE_YOK:sku-104"` (yarım JSON) | `girdi hatası: Expecting ':' delimiter: line 1 column 32 (char 31)` | `2` |
+| `{"alerts": {"LISTE_YOK:sku-104"` (yarım JSON) | `girdi hatası: durum dosyası geçerli JSON değil: $KOSU/s4/state.json (satır 1, sütun 32: Expecting ':' delimiter)` | `2` |
 | `{"alerts": []}` (`alerts` nesne değil) | `girdi hatası: durum dosyasında 'alerts' nesnesi yok: $KOSU/s4/state.json` | `2` |
 | `["LISTE_YOK:sku-104"]` (kök dizi) | `girdi hatası: durum dosyası bir nesne olmalı: $KOSU/s4/state.json` | `2` |
-| `{"alerts": {"FIYAT_SAPMASI:sku-103": {"first_seen": "bozuk-tarih"}}}` | *(hata yok)* — `first_seen` okunamayınca `now`a düşer, alarm **DEVAM EDEN** sayılır | `1` |
+| `{"version": 1, "generated_at": "…"}` (`alerts` alanı yok) | `girdi hatası: durum dosyasında 'alerts' alanı yok: $KOSU/s4/state.json` | `2` |
+| `{"alerts": {"FIYAT_SAPMASI:sku-103": {"first_seen": "bozuk-tarih"}}}` | `uyarı: durum dosyasında 'FIYAT_SAPMASI:sku-103' kaydının 'first_seen' değeri ISO zaman damgası değil ('bozuk-tarih'); ilk görülme bu turun anı sayılacak: $KOSU/s4/state.json` — alarm **DEVAM EDEN** sayılır | `1` |
 
-İlk üç satırda JSON çözücünün **ham İngilizce mesajı** görünür (Türkçe ön ek `girdi hatası:`), dördüncü
-satırda ise bozuk tarih sessizce yutulur. İkisi de bilinen eksiktir ve `ms-02` maddesinin konusudur:
-hata mesajının Türkçeleştirilmesi ve `first_seen` çözülemediğinde sessiz düşüş yerine uyarı.
+İlk dört satırda koşu **hiç başlamaz**: hata cümlesi Türkçedir ve dosya yolunu taşır; JSON çözücünün
+İngilizce ayrıntısı yalnızca parantez içinde ek bilgi olarak kalır. Son satır bilinçli bir ayrımdır:
+bozuk bir `first_seen` kaydın varlığını ortadan kaldırmaz, bu yüzden alarm "YENİ" diye yeniden
+bağırılmaz — kayıt korunur ve kullanıcı stderr'de tek satır uyarı görür (ayrıntılı tablo:
+[rules.md § Durum dosyası doğrulaması](rules.md#durum-dosyası-doğrulaması)).
 
 `state show` alt komutu dosya yoksa da girdi hatası verir (çıktı: `girdi hatası: durum dosyası
 bulunamadı: $KOSU/s4/yok.json`, kod `2`) — yani "kayıt yok" ile "dosya yok" karıştırılmaz.
