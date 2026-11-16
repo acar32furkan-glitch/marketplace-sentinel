@@ -144,7 +144,7 @@ uv run pytest --cov=sentinel --cov-report=term-missing --cov-fail-under=85
 uv run python scripts/verify_examples.py  # sample data ↔ profile consistency
 ```
 
-**149 tests** · **97.9% coverage** · `ruff` + `ruff format` + `mypy --strict` clean · CI: Python 3.12
+**157 tests** · **98% coverage** · `ruff` + `ruff format` + `mypy --strict` clean · CI: Python 3.12
 and 3.13 matrix plus a "sentinel demo" job (JSON contract, exit code and job summary are asserted).
 The interpreter that CI actually installs is verified inside the job, so a matrix entry running the
 wrong Python turns red instead of passing silently.

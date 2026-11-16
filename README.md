@@ -142,7 +142,7 @@ uv run pytest --cov=sentinel --cov-report=term-missing --cov-fail-under=85
 uv run python scripts/verify_examples.py  # örnek veri ↔ profil tutarlılığı
 ```
 
-**149 test** · **%97,9 kapsam** · `ruff` + `ruff format` + `mypy --strict` temiz · CI: Python 3.12 ve
+**157 test** · **%98 kapsam** · `ruff` + `ruff format` + `mypy --strict` temiz · CI: Python 3.12 ve
 3.13 matrisi + "nöbetçi demo" işi (JSON sözleşmesi, çıkış kodu ve iş özeti doğrulanır). Kurulan
 yorumlayıcı iş içinde doğrulanır; yanlış sürümle koşan matris kırmızıya döner.
 
