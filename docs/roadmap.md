@@ -17,11 +17,14 @@ Her sürüm tek bir soruya cevap verir. Deterministik çekirdek (ADR-0001) ve du
 
 Sorunun cevabı: **alarm operatörün gördüğü yere nasıl ulaşır?**
 
-- **Webhook/Slack teslimi:** yeni ve kritik alarmları bir webhook'a (Slack/Teams) gönderen `deliver`
-  katmanı. Gönderim deterministiktir: aynı alarm seti aynı payload'ı üretir; ağ çağrısı yalnızca
-  teslim sınırında, kuralların dışında yapılır.
+- **Webhook/Slack teslimi:** yayınlandı (ADR-0004) — `--webhook-url` + `--webhook-send`, varsayılan
+  kuru çalışma, adres maskeli. Gönderim deterministiktir: aynı alarm seti aynı payload'ı üretir;
+  ağ çağrısı yalnızca teslim sınırında, kuralların dışında yapılır.
+- **Teslim imzası (açık):** alıcının gövdeyi doğrulayabilmesi için `HMAC` başlığı ve yeniden
+  gönderim kuyruğu henüz yok; bugün belirteçli adres (Slack/Discord deseni) bekleniyor.
 - **E-posta özeti:** günlük/haftalık özet raporu (yeni, devam eden, çözülen sayıları).
-- **`--dry-run` / `--print-payload`:** teslimi ağa çıkmadan doğrulama.
+- **`--dry-run` / `--print-payload`:** karşılandı — teslimin varsayılanı kuru çalışma,
+  `--webhook-body dosya` gövdeyi bayt bayt yazar (`--json` bloğu `sha256` verir).
 - **Sessiz saat (quiet hours):** KRİTİK dışındaki alarmların belirli saatlerde bekletilmesi.
 
 ## v0.3.0 — Analiz derinliği

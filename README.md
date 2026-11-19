@@ -64,6 +64,33 @@ uv run sentinel state show --state examples/data/state.json
 uv run sentinel watch --fixtures examples/data --interval 900 --iterations 2
 ```
 
+## Alarmı dışarı gönderme (webhook)
+
+Nöbetçi alarmı üretir; **teslim** ayrı ve isteğe bağlı bir adımdır. `--webhook-url` verildiğinde
+gövde hazırlanır ve **varsayılan olarak gönderilmez** (kuru çalışma): bayt sayısı ve `sha256` yazılır,
+ağa çıkılmaz. Gerçek `POST` yalnızca `--webhook-send` ile yapılır.
+
+```bash
+# Kuru çalışma: gövde hazır, istek yok
+uv run sentinel scan --fixtures examples/data --no-state-write   --webhook-url "https://hooks.example.com/services/T000/B000/gizli-belirtec"
+# webhook: kuru çalışma — POST https://hooks.example.com/… · gövde 6302 bayt · sha256 cc8c1ae79535… · istek atılmadı
+
+# Gerçekten gönder (adresi ortam değişkeninde tutmak yeğlenir)
+export SENTINEL_WEBHOOK_URL="https://hooks.example.com/services/T000/B000/gizli-belirtec"
+uv run sentinel scan --fixtures examples/data --webhook-send
+```
+
+- **Adres bir sırdır.** Slack/Discord belirteci yolun içindedir; çıktıda yol `…` olur, tam adres
+  hiçbir yere (konsol, `--json`, hata mesajı) yazılmaz.
+- **Gövde** `--json` ile aynı sözleşmedir + `event`/`schema` zarfı; `--webhook-body dosya` ile
+  gönderilecek baytları gözden geçirebilirsiniz.
+- **Teslim hatası çıkış kodunu değiştirmez** (kod tarama kararından gelir); hata stderr'e ve
+  `--json` çıktısındaki `webhook` bloğuna (`ok: false`) yazılır.
+- `3xx` izlenmez, `401/403` yeniden denenmez, `429/5xx` üç denemeye kadar geri çekilir.
+
+Ayrıntı, dört senaryonun gerçek çıktısı ve sınırlar: **[docs/webhook.md](docs/webhook.md)** ·
+karar: [ADR-0004](docs/adr/0004-webhook-teslimi.md).
+
 ## Çıkış kodları
 
 | Kod | Anlam |
@@ -142,13 +169,15 @@ uv run pytest --cov=sentinel --cov-report=term-missing --cov-fail-under=85
 uv run python scripts/verify_examples.py  # örnek veri ↔ profil tutarlılığı
 ```
 
-**157 test** · **%98 kapsam** · `ruff` + `ruff format` + `mypy --strict` temiz · CI: Python 3.12 ve
+**195 test** · **%98 kapsam** · `ruff` + `ruff format` + `mypy --strict` temiz · CI: Python 3.12 ve
 3.13 matrisi + "nöbetçi demo" işi (JSON sözleşmesi, çıkış kodu ve iş özeti doğrulanır). Kurulan
 yorumlayıcı iş içinde doğrulanır; yanlış sürümle koşan matris kırmızıya döner.
 
 ## Sınırlar
 
 - **Pazaryerine yazmaz.** Fiyat/stok güncellemez; yalnızca okur ve raporlar (kapsam dışı, bilinçli).
+- **Teslim kaybolabilir.** Webhook teslimi kuyruklu değildir ve imzalanmaz; kalıcı teslim ya da
+  `HMAC` doğrulaması gerekiyorsa alıcı tarafta kurulmalıdır (bkz. [docs/webhook.md](docs/webhook.md)).
 - **Panel kazımaz.** Veri resmî pazaryeri API'sinden ya da kullanıcının verdiği fixture'dan gelir.
 - **LLM yok.** Anlam/içerik denetlemez; yalnızca sayısal ve zamansal tutarsızlıkları görür.
 - **Kural motoru kanal-agnostiktir:** yeni bir pazaryeri için kod değil, `profiles/` altına bir YAML

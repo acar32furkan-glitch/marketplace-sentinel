@@ -30,6 +30,7 @@ from sentinel.profiles import MarketplaceProfile, load_profiles
 from sentinel.render import render_github_summary, render_scan_text
 from sentinel.scan import FailPolicy, decide, run_scan
 from sentinel.state import load_state, save_state
+from sentinel.webhook import WebhookDelivery, build_body, deliver, encode_body, resolve_url
 
 EXIT_OK = 0
 EXIT_FAILED = 1
@@ -70,6 +71,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--github-summary",
         action="store_true",
         help="Markdown özetini $GITHUB_STEP_SUMMARY dosyasına ekle (Actions iş özeti).",
+    )
+    scan.add_argument(
+        "--webhook-url",
+        default=None,
+        help=(
+            "Alarm gövdesini POST edilecek adres (yoksa $SENTINEL_WEBHOOK_URL). "
+            "Varsayılan kuru çalışma: istek atılmaz, gövde ve sha256 yazılır."
+        ),
+    )
+    scan.add_argument(
+        "--webhook-send",
+        action="store_true",
+        help="Kuru çalışmayı kapat: gövdeyi gerçekten POST et (adres bir sırdır, çıktıda maskelenir).",
+    )
+    scan.add_argument(
+        "--webhook-body",
+        type=Path,
+        default=None,
+        help="Gönderilecek tam gövdeyi bu dosyaya yaz (kuru çalışmada gözden geçirmek için).",
     )
 
     state = sub.add_parser("state", help="Durum dosyası işlemleri.")
@@ -146,18 +166,57 @@ def _warn_state(message: str) -> None:
     print(f"uyarı: {message}", file=sys.stderr)
 
 
+def _report_delivery(delivery: WebhookDelivery) -> None:
+    """Teslim sonucunu insan tarafı için stderr'e tek satır yaz (adres maskeli)."""
+    if delivery.dry_run:
+        print(
+            f"webhook: kuru çalışma — POST {delivery.url} · gövde {delivery.byte_count} bayt · "
+            f"sha256 {delivery.sha256[:12]}… · istek atılmadı",
+            file=sys.stderr,
+        )
+        print("webhook: göndermek için --webhook-send ekleyin.", file=sys.stderr)
+        return
+    if delivery.sent:
+        print(
+            f"webhook: teslim edildi — HTTP {delivery.status_code} · gövde {delivery.byte_count} bayt · "
+            f"{delivery.attempts} deneme",
+            file=sys.stderr,
+        )
+        return
+    print(
+        f"uyarı: webhook teslim edilemedi — {delivery.error} ({delivery.attempts} deneme); "
+        "taramanın çıkış kodu değişmedi.",
+        file=sys.stderr,
+    )
+
+
 def cmd_scan(args: argparse.Namespace) -> int:
     """Kanalları tara, raporla ve (istenirse) durum dosyasını güncelle."""
     fixtures: Path = args.fixtures
     state_path: Path = args.state or (fixtures / STATE_FILENAME)
     now = _resolve_now(args.now)
     policy = FailPolicy(args.fail_on)
+    webhook_url = resolve_url(args.webhook_url, os.environ)
     channels = _load_channels(fixtures)
     result = run_scan(channels, now=now, previous_state=load_state(state_path, warn=_warn_state))
     passed, reasons = decide(result, policy)
 
-    if args.as_json or args.report:
+    payload: dict[str, Any] | None = None
+    if args.as_json or args.report or webhook_url:
         payload = _payload(result, passed=passed, reasons=reasons, policy=policy)
+
+    if webhook_url is not None and payload is not None:
+        body = build_body(payload)
+        delivery = deliver(webhook_url, body, dry_run=not args.webhook_send)
+        if args.webhook_body is not None:
+            args.webhook_body.parent.mkdir(parents=True, exist_ok=True)
+            args.webhook_body.write_bytes(encode_body(body))
+        _report_delivery(delivery)
+        # Gönderilen gövde teslim bloğunu taşımaz (gövde kendi sonucunu içeremez); blok yalnızca
+        # --json/--report çıktısına girer.
+        payload["webhook"] = delivery.to_json()
+
+    if payload is not None:
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

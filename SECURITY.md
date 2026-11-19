@@ -23,7 +23,10 @@ notlarında anılır.
 ## Tehdit modeli
 
 `marketplace-sentinel` **çevrimdışı bir CLI/kütüphanedir**: ölçüm katmanı ağa çıkmaz, hesap açmaz,
-kimlik bilgisi istemez ve pazaryerine **yazmaz**. Yalnızca okur ve raporlar.
+kimlik bilgisi istemez (profilde tanımlıysa ortam değişkeninden okur) ve pazaryerine **yazmaz**.
+Yalnızca okur ve raporlar. Tek istisna, kullanıcının açıkça verdiği **webhook adresine** yapılan
+tek yönlü `POST`'tur: varsayılanı kuru çalışmadır, açık `--webhook-send` ister ve pazaryeri
+hesabına dokunmaz (ADR-0004).
 
 Bu proje açısından anlamlı riskler:
 
@@ -32,7 +35,8 @@ Bu proje açısından anlamlı riskler:
 | Doğruluk riski | Kurallar alarm üretir; hatalı bir kural **yanlış alarm** ya da **kaçırmadır**. Kaçırılan tutarsızlık ticari kayıptır; yanlış alarm ise operatörü alarma alıştırır. Her ikisi de issue olarak bildirilmeye değer. |
 | Gizli bilgiler | Kimlik bilgileri **yalnızca ortam değişkenlerinden** okunur; hangi değişken olduğu profilde (`username_env`, `password_env`, `token_env`) tanımlanır, değerin kendisi kodda/profilde/durum dosyasında tutulmaz. `.env*` dosyaları `.gitignore` ile dışlanır; `--fixtures` modunda kimlik bilgisi hiç okunmaz, HTTP kanalı değeri hata mesajına ve loga yazmaz. |
 | Girdi dosyaları | Profil (YAML), fixture (JSON) ve durum dosyası kullanıcı girdisidir. YAML `yaml.safe_load` ile yüklenir; `eval`/`exec` yolu ve şablon yürütme yoktur. |
-| Yazma yok | Nöbetçi hiçbir koşuda pazaryerine geri yazmaz ve panel oturumu açmaz; uzaktan gelen bir yanıt kod yürütme yoluna girmez. |
+| Yazma yok | Nöbetçi hiçbir koşuda pazaryerine geri yazmaz ve panel oturumu açmaz; uzaktan gelen bir yanıt kod yürütme yoluna girmez. Tek yönlü webhook `POST`'u kullanıcının verdiği adrese gider, yanıtı yalnızca durum koduna indirgenir (gövdesi okunmaz, yürütülmez). |
+| Webhook adresi | Adres bir sırdır (Slack/Discord belirteci yolda durur): hiçbir çıktıya tam yazılmaz, `https://host/…` biçiminde maskelenir. Adrese gömülü kullanıcı/şifre ve `#` parçası reddedilir; yönlendirme izlenmez (gövde başka adrese taşınamaz). Varsayılan kuru çalışma olduğu için yanlış adres yazan kullanıcı istemeden canlı kanala alarm göndermez. |
 | Kaynak tüketimi | Büyük fixture'lar için işlem doğrusaldır (sku × kanal); bilinen üstel desen yoktur. `--max-alerts` çıktı hacmini sınırlar. |
 | Durum dosyası bütünlüğü | Bozuk durum dosyası girdi hatası (çıkış kodu `2`) verir; nöbetçi dosyayı tahminle onarmaya çalışmaz ve sessizce sıfırlamaz. |
 
