@@ -68,6 +68,33 @@ uv run sentinel state show --state examples/data/state.json
 uv run sentinel watch --fixtures examples/data --interval 900 --iterations 2
 ```
 
+## Delivering alerts (webhook)
+
+The sentinel produces alerts; **delivery** is a separate, opt-in step. Passing `--webhook-url`
+builds the payload and **does not send it by default** (dry run): byte count and `sha256` are printed
+and no network call is made. The real `POST` requires `--webhook-send`.
+
+```bash
+# Dry run: payload ready, no request
+uv run sentinel scan --fixtures examples/data --no-state-write   --webhook-url "https://hooks.example.com/services/T000/B000/hidden-token"
+# webhook: kuru çalışma — POST https://hooks.example.com/… · gövde 6302 bayt · sha256 cc8c1ae79535… · istek atılmadı
+
+# Actually send (prefer keeping the URL in an environment variable)
+export SENTINEL_WEBHOOK_URL="https://hooks.example.com/services/T000/B000/hidden-token"
+uv run sentinel scan --fixtures examples/data --webhook-send
+```
+
+- **The URL is a secret.** Slack/Discord webhook tokens live in the path; output shows `…` instead
+  and the full URL is never printed (console, `--json`, error messages).
+- **Payload** is the same contract as `--json` plus an `event`/`schema` envelope; `--webhook-body file`
+  writes the exact bytes that would be sent.
+- **Delivery failure does not change the exit code** (that code reports the scan verdict); the error
+  goes to stderr and to the `webhook` block of `--json` (`ok: false`).
+- `3xx` is not followed, `401/403` is not retried, `429/5xx` is retried up to three attempts.
+
+Details, real outputs of four scenarios and limits: **[docs/webhook.md](docs/webhook.md)** ·
+decision: [ADR-0004](docs/adr/0004-webhook-teslimi.md).
+
 ## Exit codes
 
 | Code | Meaning |
@@ -144,7 +171,7 @@ uv run pytest --cov=sentinel --cov-report=term-missing --cov-fail-under=85
 uv run python scripts/verify_examples.py  # sample data ↔ profile consistency
 ```
 
-**157 tests** · **98% coverage** · `ruff` + `ruff format` + `mypy --strict` clean · CI: Python 3.12
+**195 tests** · **98% coverage** · `ruff` + `ruff format` + `mypy --strict` clean · CI: Python 3.12
 and 3.13 matrix plus a "sentinel demo" job (JSON contract, exit code and job summary are asserted).
 The interpreter that CI actually installs is verified inside the job, so a matrix entry running the
 wrong Python turns red instead of passing silently.

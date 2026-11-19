@@ -1,6 +1,8 @@
 # Mimari
 
 Dört katman, tek yönlü akış: **girdi (profil + fixture) → kanallar → kurallar → dedupe → çıktı**.
+Çıktı katmanı isteğe bağlı bir teslim adımı taşır (`webhook.py`): ölçümü değiştirmez, varsayılanı
+kuru çalışmadır.
 Hiçbir katman ağa çıkmaz, saati okumaz veya rastgelelik kullanmaz (`now` dışarıdan verilir); bu
 yüzden aynı girdi + aynı durum her zaman aynı alarmları üretir.
 
@@ -21,6 +23,7 @@ flowchart TD
     result --> cli["cli.py<br/>scan · watch · state · profiles"]
     result --> render["render.py<br/>Türkçe konsol · Markdown · GitHub iş özeti"]
     result --> json["--json / --report<br/>CI sözleşmesi"]
+    result --> wh["webhook.py<br/>gövde + kuru çalışma<br/>(istek yalnızca --webhook-send)"]
 ```
 
 ## Katmanlar
@@ -33,6 +36,7 @@ flowchart TD
 | `scan.py` | Kuralları çalıştırır, alarmları üretir ve `kod:sku` imzası atar | Girdiyi fixture/istemci ayırt etmez |
 | `state.py` | `state.json` okur, imzaları sınıflar | `classify()` → YENİ / DEVAM EDEN / ÇÖZÜLDÜ |
 | `render.py` | İnsan tarafı çıktı | Türkçe konsol, Markdown, Actions iş özeti |
+| `webhook.py` | Alarm gövdesini JSON olarak dışarı POST eder | Ölçüm yolunun **dışında**; varsayılan kuru çalışma, adres maskeli, yönlendirme izlenmez (ADR-0004) |
 | `cli.py` | Komutlar ve çıkış kodları | `0` yeni kritik yok · `1` politika düştü · `2` girdi hatası |
 
 ## Neden ayrı bir `channels/` katmanı?

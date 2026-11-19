@@ -3,6 +3,31 @@
 Bu dosya [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) biçimini izler ve proje
 [Semantic Versioning](https://semver.org/lang/tr/) kullanır.
 
+## [Yayınlanmadı]
+
+### Eklendi
+- **Webhook teslimi (`--webhook-url`, `--webhook-send`, `--webhook-body`):** `scan` sonucunu JSON
+  olarak dışarı POST eder. Varsayılan **kuru çalışmadır** — gövde, bayt sayısı ve `sha256` yazılır,
+  ağa çıkılmaz; gerçek teslim açık `--webhook-send` ister. Adres `SENTINEL_WEBHOOK_URL` ortam
+  değişkeninden de okunur (bayrak kazanır).
+- **Maskeleme:** webhook adresi hiçbir çıktıda tam görünmez (`https://host/…`); Slack/Discord
+  belirteçleri yolda durduğu için konsol, `--json` ve hata mesajları yalnızca maskeli adresi taşır.
+- **Teslim politikası:** `429`/`5xx` ve ağ hatasında üstel geri çekilmeyle en fazla 3 deneme;
+  `401`/`403` ve diğer `4xx` anında durur; `3xx` **izlenmez** (teslim hatası). Teslim hatası
+  taramanın çıkış kodunu değiştirmez; `--json`/`--report` çıktısındaki `webhook` bloğu `ok: false`,
+  `error`, `attempts`, `status_code` taşır.
+- **Katı adres doğrulaması:** yalnızca `http`/`https`; adrese gömülü kullanıcı/şifre ve `#` parçası
+  girdi hatası (çıkış `2`).
+- **Doğrulama betiği:** `scripts/webhook_probe.py` yerel sahte sunucuya karşı dört senaryoyu
+  (normal, geçici hata, yönlendirme, kalıcı hata) gerçekten koşturur; çıktılar `docs/webhook.md`'de.
+- **Belgeler:** `docs/webhook.md`, [ADR-0004](docs/adr/0004-webhook-teslimi.md), README/README.en.md
+  bölümü, mimari tablosu satırı, SECURITY.md tehdit modeli güncellemesi.
+
+### Değişti
+- `--json` / `--report` sözleşmesine, yalnızca webhook yapılandırıldığında `webhook` bloğu eklenir;
+  webhook yoksa çıktı birebir eskisi gibidir (testle sabit).
+- Test sayısı 157 → 195; kapsam %98.
+
 ## [0.1.0] - 2026-10-06
 
 ### Eklendi

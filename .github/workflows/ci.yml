@@ -95,6 +95,41 @@ jobs:
           grep -q "KARAR: KALDI" /tmp/scan.txt
           grep -q "STOK_CAKISMASI" /tmp/scan.txt
 
+      - name: Webhook kuru çalışma (istek atılmaz, gövde ve sha256 yazılır)
+        run: |
+          set +e
+          uv run sentinel scan --fixtures examples/data --no-state-write             --webhook-url "https://hooks.example.invalid/services/T000/B000/gizli"             --webhook-body /tmp/webhook-govde.json > /dev/null 2> /tmp/webhook-err.txt
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "HATA: beklenen çıkış kodu 1, gelen $code" >&2
+            exit 1
+          fi
+          grep -q "kuru çalışma" /tmp/webhook-err.txt
+          if grep -q "gizli" /tmp/webhook-err.txt; then
+            echo "HATA: webhook adresi maskelenmemiş" >&2
+            exit 1
+          fi
+          grep -q "istek atılmadı" /tmp/webhook-err.txt
+          test -s /tmp/webhook-govde.json
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          raw = Path("/tmp/webhook-govde.json").read_bytes()
+          body = json.loads(raw)
+          assert body["event"] == "scan" and body["schema"] == 1, "gövde zarfı eksik"
+          assert "webhook" not in body, "gövde kendi teslim sonucunu taşımamalı"
+          print(f"gövde {len(raw)} bayt · sha256 {hashlib.sha256(raw).hexdigest()[:12]}…")
+          PY
+
+      - name: Webhook teslimi (yerel sahte sunucu, internete çıkılmaz)
+        run: |
+          uv run python scripts/webhook_probe.py examples/data ok | tee /tmp/probe.txt
+          grep -q "teslim edildi — HTTP 200" /tmp/probe.txt
+          grep -q "sunucunun gördüğü istek: 1" /tmp/probe.txt
+
       - name: Örnek durum dosyası değişmemeli (CI idempotent)
         run: |
           if ! git diff --quiet -- examples/data/state.json; then

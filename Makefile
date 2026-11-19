@@ -34,6 +34,9 @@ state: ## Son durum dosyasını göster
 profiles: ## Aktif kanalları ve alan eşlemesini listele
 	$(PY) sentinel profiles --fixtures examples/data
 
+webhook-probe: ## Webhook teslimini yerel sahte sunucuya karşı ölç (internete çıkmaz)
+	$(PY) python scripts/webhook_probe.py examples/data ok
+
 demo-svg: ## README için SVG çıktı üret
 	$(PY) python scripts/make_demo_svg.py
 
@@ -41,4 +44,4 @@ clean: ## Temizlik
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage dist build
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
 
-.PHONY: help sync lint format type test cov check demo state profiles demo-svg clean
+.PHONY: help sync lint format type test cov check demo state profiles webhook-probe demo-svg clean
